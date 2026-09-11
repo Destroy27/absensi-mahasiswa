@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Absen · Absensi Mahasiswa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="bg-decor" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <!-- ================= HEADER ================= -->
+  <header class="topnav">
+    <div class="container wrap-sm">
+      <div class="topnav-inner">
+        <div class="brand">
+          <div class="brand-icon"><i class="fa-solid fa-clipboard-user"></i></div>
+          <div class="brand-text">
+            <h1 id="app-name">Absensi Mahasiswa</h1>
+            <p id="header-class">Pilih kelas untuk mulai</p>
+          </div>
+        </div>
+        <div class="nav-actions">
+          <select id="select-kelas" class="select input-sm" style="max-width:150px" title="Pilih kelas"></select>
+          <a href="admin.html" class="icon-btn" title="Panel Admin"><i class="fa-solid fa-user-gear"></i></a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container wrap-sm main">
+
+    <!-- ================= HERO SESI ================= -->
+    <section class="hero anim-in" id="hero">
+      <span class="hero-pill" id="session-badge"><span class="dot pulse-dot"></span> Memuat...</span>
+      <h2 id="meeting-title">Memuat data...</h2>
+      <p class="hero-sub" id="meeting-sub">
+        <i class="fa-regular fa-calendar"></i>
+        <span id="meeting-sub-text">—</span>
+      </p>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <span class="label">Jam Buka</span>
+          <span class="value" id="hero-jam-buka">--:--</span>
+        </div>
+        <div class="hero-stat">
+          <span class="label">Jam Tutup</span>
+          <span class="value" id="hero-jam-tutup">--:--</span>
+        </div>
+        <div class="hero-stat">
+          <span class="label">Sisa Waktu</span>
+          <span class="value mono" id="countdown">--:--:--</span>
+        </div>
+      </div>
+      <p class="hero-note" id="session-note">Menghitung...</p>
+    </section>
+
+    <!-- ================= FORM ABSEN ================= -->
+    <section class="card section-card anim-in-1">
+      <div class="card-head">
+        <div>
+          <h3>Absen Sekarang</h3>
+          <p>Masukkan NIM, pilih status, lengkapi bukti.</p>
+        </div>
+        <div class="card-head-icon"><i class="fa-solid fa-id-card"></i></div>
+      </div>
+      <div class="card-body form-stack">
+
+        <div class="field">
+          <label class="field-label" for="input-nim"><i class="fa-solid fa-hashtag"></i> Nomor Induk Mahasiswa (NIM) <span class="req">*</span></label>
+          <div class="input-icon-wrap">
+            <i class="fa-solid fa-id-badge"></i>
+            <input type="text" id="input-nim" class="input input-lg input-mono" placeholder="Contoh: 2415051074"
+                   inputmode="numeric" autocomplete="off" maxlength="20">
+          </div>
+        </div>
+
+        <div id="box-verified" class="alert alert-success hidden">
+          <i class="fa-solid fa-circle-check"></i>
+          <div>
+            <strong><span id="v-name">—</span></strong>
+            <p id="v-nim">NIM terverifikasi</p>
+          </div>
+        </div>
+        <div id="box-notfound" class="alert alert-danger hidden">
+          <i class="fa-solid fa-circle-xmark"></i>
+          <div>
+            <strong>NIM Tidak Terdaftar</strong>
+            <p>Pendaftaran mahasiswa hanya bisa dilakukan oleh Admin kelas. Silakan hubungi admin untuk didaftarkan dahulu.</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label"><i class="fa-solid fa-flag"></i> Status Kehadiran <span class="req">*</span></label>
+          <div class="opt-grid" id="status-grid">
+            <button type="button" class="opt-pill active pill-hadir" data-status="Hadir" onclick="pilihStatus('Hadir')">
+              <i class="fa-solid fa-circle-check"></i> Hadir <small>dengan bukti</small>
+            </button>
+            <button type="button" class="opt-pill pill-sakit" data-status="Sakit" onclick="pilihStatus('Sakit')">
+              <i class="fa-solid fa-heart-pulse"></i> Sakit <small>surat / bukti</small>
+            </button>
+            <button type="button" class="opt-pill pill-izin" data-status="Izin" onclick="pilihStatus('Izin')">
+              <i class="fa-solid fa-envelope-open-text"></i> Izin <small>tulis alasan</small>
+            </button>
+            <button type="button" class="opt-pill pill-dispen" data-status="Dispen" onclick="pilihStatus('Dispen')">
+              <i class="fa-solid fa-file-shield"></i> Dispen <small>tulis alasan</small>
+            </button>
+          </div>
+        </div>
+
+        <div id="box-alasan" class="field hidden">
+          <label class="field-label" for="input-alasan"><i class="fa-solid fa-pen-to-square"></i> Alasan <span id="alasan-label" class="req">sakit</span> <span class="req">*</span></label>
+          <textarea id="input-alasan" class="textarea" rows="3" maxlength="500" placeholder="Tuliskan alasan lengkap..."></textarea>
+        </div>
+
+        <div class="field">
+          <label class="field-label"><i class="fa-solid fa-camera"></i> <span id="dok-label">Bukti Kehadiran / Surat</span> <span class="req" id="dok-required">(Wajib)</span></label>
+          <div class="dropzone" id="dropzone" onclick="document.getElementById('input-file').click()">
+            <input type="file" id="input-file" accept="image/*,application/pdf" class="hidden">
+            <div class="dropzone-inner" id="dropzone-inner">
+              <div class="dz-icon"><i class="fa-solid fa-camera-retro"></i></div>
+              <strong>Ambil foto atau unggah file</strong>
+              <span>Foto dari kamera / galeri · PDF juga didukung · otomatis dikompres</span>
+            </div>
+            <div class="file-preview hidden" id="file-preview">
+              <span class="fp-file"><i class="fa-solid fa-file-pdf"></i></span>
+              <img class="fp-thumb hidden" id="fp-thumb" alt="">
+              <div class="fp-info">
+                <strong id="fp-name">—</strong>
+                <span id="fp-status">Siap dikirim</span>
+              </div>
+              <button type="button" onclick="hapusFile(event)" title="Hapus file"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+          </div>
+          <span class="field-hint" id="dok-hint">Bukti lampiran mengikuti aturan kelas (opsional / wajib).</span>
+        </div>
+
+        <button class="btn btn-primary btn-block btn-lg" id="btn-submit" onclick="kirimAbsen(event)">
+          <i class="fa-solid fa-paper-plane"></i> <span>Kirim Absen</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ================= AKTIVITAS TERBARU ================= -->
+    <section class="card section-card anim-in-2">
+      <div class="card-head">
+        <div>
+          <h3>Aktivitas Terbaru</h3>
+          <p>Rekap absen pada pertemuan ini</p>
+        </div>
+        <span class="count-pill" id="total-badge">0 mahasiswa</span>
+      </div>
+      <div id="log-list" class="log-list">
+        <div class="empty-state"><i class="fa-regular fa-folder-open"></i><p>Belum ada absen pada sesi ini.</p></div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      Data dikelola oleh Admin &middot; bukti dokumentasi diperlukan untuk Hadir &amp; Sakit
+    </footer>
+  </main>
+
+  <!-- ================= TOAST ================= -->
+  <div class="toast" id="toast" role="alert">
+    <div class="t-icon ok"><i class="fa-solid fa-circle-check"></i></div>
+    <div class="t-body">
+      <div class="t-title" id="toast-title">Notifikasi</div>
+      <div class="t-msg" id="toast-msg">Pesan.</div>
+    </div>
+    <button class="t-close" onclick="Absensi.hideToast()" aria-label="Tutup"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+
+  <!-- ================= MODAL PREVIEW ================= -->
+  <div class="modal-overlay" id="modal-preview" onclick="if(event.target===this)tutupModal('modal-preview')">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-cover no-print">
+        <h3><i class="fa-solid fa-file-lines"></i> <span id="preview-title">Dokumentasi</span></h3>
+        <button onclick="tutupModal('modal-preview')" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div id="preview-body" style="text-align:center; color:var(--muted); padding:10px 0; font-size:13px">Tidak ada preview.</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script src="index.js"></script>
+</body>
+</html>

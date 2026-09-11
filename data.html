@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Data Absensi · Absensi Mahasiswa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="bg-decor" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <!-- ================= HEADER ================= -->
+  <header class="topnav no-print">
+    <div class="container wrap-lg">
+      <div class="topnav-inner">
+        <div class="brand">
+          <div class="brand-icon" style="background:linear-gradient(135deg,#0d9488,#0f766e)"><i class="fa-solid fa-table"></i></div>
+          <div class="brand-text">
+            <h1>Data Absensi</h1>
+            <p id="header-info">Lihat, cari, filter &amp; cetak data per pertemuan.</p>
+          </div>
+        </div>
+        <div class="nav-actions">
+          <a href="index.html" class="icon-btn" title="Halaman Absen"><i class="fa-solid fa-clipboard-user"></i></a>
+          <a href="admin.html" class="icon-btn" title="Panel Admin"><i class="fa-solid fa-user-gear"></i></a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container wrap-lg main">
+
+    <!-- ================= HEADER CETAK (hanya muncul saat print) ================= -->
+    <div class="print-header">
+      <div class="print-title">
+        <h2 id="print-app-title">LAPORAN ABSENSI MAHASISWA</h2>
+        <p id="print-kelas-info">—</p>
+      </div>
+      <div class="print-meta" id="print-meta"></div>
+    </div>
+
+    <!-- ================= FILTER ================= -->
+    <section class="card section-card anim-in no-print">
+      <div class="card-head">
+        <div>
+          <h3>Filter &amp; Pencarian</h3>
+          <p>Pilih kelas, pertemuan, dan status untuk menyaring data.</p>
+        </div>
+        <div class="card-head-icon" style="background:rgba(13,148,136,.1);color:#0d9488"><i class="fa-solid fa-filter"></i></div>
+      </div>
+      <div class="card-body">
+        <div class="filter-bar">
+          <div class="field f-grow">
+            <label class="field-label">Kelas</label>
+            <select id="filter-kelas" class="select"></select>
+          </div>
+          <div class="field f-grow">
+            <label class="field-label">Pertemuan</label>
+            <select id="filter-pertemuan" class="select"></select>
+          </div>
+          <div class="field">
+            <label class="field-label">Status</label>
+            <select id="filter-status" class="select" style="min-width:160px">
+              <option value="">Semua Status</option>
+              <option value="Hadir">Hadir</option>
+              <option value="TIDAK_HADIR">Tidak Hadir (Sakit · Izin · Dispen)</option>
+              <option value="Sakit">Sakit</option>
+              <option value="Izin">Izin</option>
+              <option value="Dispen">Dispen</option>
+            </select>
+          </div>
+          <div class="field f-grow">
+            <label class="field-label">Cari NIM / Nama</label>
+            <div class="input-icon-wrap">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="search-input" class="input" placeholder="Ketik NIM atau nama...">
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label">&nbsp;</label>
+            <div class="form-grid grid-2" style="display:flex;gap:8px">
+              <button class="btn btn-dark" onclick="cetak()" title="Cetak / simpan PDF"><i class="fa-solid fa-print"></i></button>
+              <button class="btn btn-success" onclick="exportCSV()" title="Unduh CSV"><i class="fa-solid fa-file-csv"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= RINGKASAN ================= -->
+    <section class="anim-in-1">
+      <div class="stat-grid" id="stat-grid">
+        <div class="stat-card sc-total"><span class="sc-label">Total</span><div class="sc-value" id="st-total">0</div></div>
+        <div class="stat-card sc-hadir"><span class="sc-label"><i class="fa-solid fa-circle-check sc-icon"></i>Hadir</span><div class="sc-value" id="st-hadir">0</div></div>
+        <div class="stat-card sc-absent"><span class="sc-label"><i class="fa-solid fa-user-xmark sc-icon"></i>Tidak Hadir</span><div class="sc-value" id="st-absent">0</div></div>
+        <div class="stat-card sc-sakit"><span class="sc-label"><i class="fa-solid fa-heart-pulse sc-icon"></i>Sakit</span><div class="sc-value" id="st-sakit">0</div></div>
+        <div class="stat-card sc-izin"><span class="sc-label"><i class="fa-solid fa-envelope-open-text sc-icon"></i>Izin</span><div class="sc-value" id="st-izin">0</div></div>
+        <div class="stat-card sc-dispen"><span class="sc-label"><i class="fa-solid fa-file-shield sc-icon"></i>Dispen</span><div class="sc-value" id="st-dispen">0</div></div>
+      </div>
+    </section>
+
+    <p class="field-hint no-print" id="info-catatan" style="margin-top:-6px;font-size:12px">Menghitung data...</p>
+
+    <!-- ================= TABEL ================= -->
+    <section class="card section-card anim-in-2" style="padding:0;overflow:hidden">
+      <div class="section-title st-green" style="padding-top:18px">
+        <div class="st-main">
+          <div class="st-icon"><i class="fa-solid fa-list-check"></i></div>
+          <div>
+            <h3 id="tabel-judul">Rekap Absensi</h3>
+            <p class="st-sub" id="tabel-sub">—</p>
+          </div>
+        </div>
+        <span class="count-pill" id="count-row">0 catatan</span>
+      </div>
+      <div class="card-body" style="padding-top:14px">
+        <div class="table-wrap">
+          <table class="table" id="data-table">
+            <thead>
+              <tr>
+                <th style="width:38px">No</th>
+                <th>Waktu</th>
+                <th>NIM</th>
+                <th>Nama</th>
+                <th style="text-align:center">Status</th>
+                <th>Alasan</th>
+                <th style="text-align:center">Bukti</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer no-print">
+      Data bersumber dari Google Spreadsheet · sinkron otomatis · dicetak dari halaman ini
+    </footer>
+  </main>
+
+  <!-- ================= TOAST ================= -->
+  <div class="toast" id="toast" role="alert">
+    <div class="t-icon ok"><i class="fa-solid fa-circle-check"></i></div>
+    <div class="t-body">
+      <div class="t-title" id="toast-title">Notifikasi</div>
+      <div class="t-msg" id="toast-msg">Pesan.</div>
+    </div>
+    <button class="t-close" onclick="Absensi.hideToast()"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+
+  <!-- ================= MODAL PREVIEW ================= -->
+  <div class="modal-overlay no-print" id="modal-preview" onclick="if(event.target===this)tutupModal()">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-cover">
+        <h3><i class="fa-solid fa-file-lines"></i> <span id="preview-title">Dokumentasi</span></h3>
+        <button onclick="tutupModal()" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div id="preview-body" style="text-align:center;color:var(--muted);padding:10px 0;font-size:13px">Tidak ada preview.</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script src="data.js"></script>
+</body>
+</html>

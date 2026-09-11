@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Panel Admin · Absensi Mahasiswa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="bg-decor" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <!-- ================= HEADER ================= -->
+  <header class="topnav topnav-dark">
+    <div class="container wrap">
+      <div class="topnav-inner">
+        <div class="brand">
+          <div class="brand-icon"><i class="fa-solid fa-user-shield"></i></div>
+          <div class="brand-text">
+            <h1>Panel Admin</h1>
+            <p id="header-admin-name">Verifikasi login terlebih dahulu</p>
+          </div>
+        </div>
+        <div class="nav-actions">
+          <a href="index.html" class="icon-btn" title="Halaman Absen"><i class="fa-solid fa-clipboard-check"></i></a>
+          <a href="data.html" class="icon-btn" title="Halaman Data"><i class="fa-solid fa-table"></i></a>
+          <button class="icon-btn" onclick="lockPanel()" title="Kunci panel"><i class="fa-solid fa-lock"></i></button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= LOGIN ================= -->
+  <div class="login-overlay" id="login-screen">
+    <div class="login-card">
+      <div class="login-logo"><i class="fa-solid fa-user-shield"></i></div>
+      <h2>Panel Admin</h2>
+      <p>Masuk dengan akun admin untuk mengelola sistem.</p>
+      <div class="form-stack" style="gap:13px">
+        <div class="field">
+          <label class="field-label" for="login-user">Username</label>
+          <input type="text" id="login-user" class="input input-mono" placeholder="admin" autocomplete="username">
+        </div>
+        <div class="field">
+          <label class="field-label" for="login-pass">Password</label>
+          <input type="password" id="login-pass" class="input input-mono" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" onclick="attemptLogin()">
+          <i class="fa-solid fa-unlock"></i> Buka Panel
+        </button>
+        <a href="index.html" class="footer" style="text-decoration:underline">← Kembali ke halaman absen</a>
+      </div>
+    </div>
+  </div>
+
+  <main class="container wrap main">
+
+    <!-- ================= DASHBOARD ================= -->
+    <section class="hero anim-in" id="dashboard-hero">
+      <span class="hero-pill" id="status-sesi-label"><span class="dot pulse-dot"></span> Memuat...</span>
+      <h2 id="dash-kelas">—</h2>
+      <p class="hero-sub" id="dash-matkul">—</p>
+      <div class="hero-stats">
+        <div class="hero-stat"><span class="label">Total</span><span class="value" id="dash-total">0</span></div>
+        <div class="hero-stat"><span class="label">Hadir</span><span class="value" id="dash-hadir">0</span></div>
+        <div class="hero-stat"><span class="label">Sakit</span><span class="value" id="dash-sakit">0</span></div>
+        <div class="hero-stat"><span class="label">Izin</span><span class="value" id="dash-izin">0</span></div>
+        <div class="hero-stat"><span class="label">Dispen</span><span class="value" id="dash-dispen">0</span></div>
+      </div>
+      <p class="hero-note" id="dash-note">Pilih kelas di bawah untuk kelola sesi &amp; datanya.</p>
+    </section>
+
+    <!-- Navigasi cepat -->
+    <nav class="pill-nav anim-in-1 no-print">
+      <a href="#kelas"><i class="fa-solid fa-school"></i> Kelas &amp; Sesi</a>
+      <a href="#mahasiswa"><i class="fa-solid fa-users"></i> Mahasiswa</a>
+      <a href="#akun"><i class="fa-solid fa-user-gear"></i> Akun Admin</a>
+      <a href="#pengaturan"><i class="fa-solid fa-sliders"></i> Pengaturan</a>
+    </nav>
+
+    <!-- ================= 1. KELAS & SESI ================= -->
+    <section id="kelas" class="card section-card anim-in-1">
+      <div class="section-title st-indigo">
+        <div class="st-main">
+          <div class="st-icon"><i class="fa-solid fa-school"></i></div>
+          <div>
+            <h3>Kelas &amp; Sesi</h3>
+            <p class="st-sub">Buat, ubah nama, atur jam &amp; pertemuan setiap kelas.</p>
+          </div>
+        </div>
+        <span class="count-pill" id="count-kelas">0 kelas</span>
+      </div>
+      <div class="card-body form-stack" style="gap:20px">
+
+        <!-- Form kelola satu kelas (diisi saat pilih/add) -->
+        <div class="alert alert-info">
+          <i class="fa-solid fa-circle-info"></i>
+          <div><strong>Setiap kelas punya pengaturan sendiri</strong><p>Nama kelas, mata kuliah, jam buka-tutup, nomor pertemuan (bisa diganti bebas), status sesi, dan aturan bukti wajib — semuanya bisa diubah fleksibel.</p></div>
+        </div>
+
+        <div class="form-grid grid-2">
+          <div class="field">
+            <label class="field-label">Nama Kelas <span class="req">*</span></label>
+            <input type="text" id="kelas-nama" class="input" placeholder="cth: IF-24 / S1 Informatika 2024">
+          </div>
+          <div class="field">
+            <label class="field-label">Mata Kuliah</label>
+            <input type="text" id="kelas-matkul" class="input" placeholder="cth: Pemrograman Web">
+          </div>
+        </div>
+
+        <div class="form-grid grid-2">
+          <div class="field">
+            <label class="field-label">Hari</label>
+            <select id="kelas-hari" class="select">
+              <option value="">— Pilih Hari —</option>
+              <option value="Senin">Senin</option>
+              <option value="Selasa">Selasa</option>
+              <option value="Rabu">Rabu</option>
+              <option value="Kamis">Kamis</option>
+              <option value="Jumat">Jumat</option>
+              <option value="Sabtu">Sabtu</option>
+              <option value="Minggu">Minggu</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">Jam Buka Absen</label>
+            <input type="time" id="kelas-jam-buka" class="input input-mono">
+          </div>
+        </div>
+
+        <div class="form-grid grid-2">
+          <div class="field">
+            <label class="field-label">Jam Tutup Absen</label>
+            <input type="time" id="kelas-jam-tutup" class="input input-mono">
+          </div>
+          <div></div>
+        </div>
+
+        <div class="form-grid grid-2">
+          <div class="field">
+            <label class="field-label">Pertemuan Ke-</label>
+            <input type="number" id="kelas-pertemuan" class="input" min="1" max="60">
+          </div>
+          <div class="field">
+            <label class="field-label">Mode Sesi</label>
+            <select id="kelas-mode" class="select">
+              <option value="OPEN">Buka Sesuai Jam</option>
+              <option value="FORCE_OPEN">Buka Manual (selalu terbuka)</option>
+              <option value="CLOSED">Tutup Paksa</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Nama / Judul Pertemuan <span class="hint-normal">(opsional &amp; fleksibel)</span></label>
+          <input type="text" id="kelas-judul" class="input" placeholder="cth: Ujian Tengah Semester / Praktikum 2 / Bebas apa saja">
+          <span class="field-hint">Akan tampil sebagai: "Pertemuan Ke-1 — Ujian Tengah Semester"</span>
+        </div>
+
+        <label class="switch">
+          <input type="checkbox" id="kelas-dokumen-wajib">
+          <span class="track"></span>
+          <span class="sw-label">Wajib bukti dokumentasi untuk SEMUA status (termasuk Izin &amp; Dispen)</span>
+        </label>
+
+        <div class="form-grid grid-2">
+          <button class="btn btn-primary btn-block" id="btn-save-kelas" onclick="simpanKelas()">
+            <i class="fa-solid fa-floppy-disk"></i> <span id="btn-save-kelas-text">Tambah Kelas</span>
+          </button>
+          <button class="btn btn-outline btn-block hidden" id="btn-batal-kelas" onclick="batalEditKelas()">
+            <i class="fa-solid fa-xmark"></i> Batal Ubah
+          </button>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border-soft)">
+
+        <!-- Daftar kelas -->
+        <div class="form-stack" style="gap:14px" id="list-kelas"></div>
+      </div>
+    </section>
+
+    <!-- ================= 2. MAHASISWA ================= -->
+    <section id="mahasiswa" class="card section-card anim-in-2">
+      <div class="section-title st-green">
+        <div class="st-main">
+          <div class="st-icon"><i class="fa-solid fa-users"></i></div>
+          <div>
+            <h3>Data Mahasiswa</h3>
+            <p class="st-sub">Kelola NIM &amp; nama sesuai kelas terpilih.</p>
+          </div>
+        </div>
+        <span class="count-pill" id="count-mahasiswa">0 mahasiswa</span>
+      </div>
+      <div class="card-body form-stack" style="gap:16px">
+
+        <div class="filter-bar">
+          <div class="field f-grow" style="min-width:200px">
+            <label class="field-label">Kelas</label>
+            <select id="mhs-kelas" class="select"></select>
+          </div>
+          <div class="field f-grow">
+            <label class="field-label">Cari NIM / Nama</label>
+            <div class="input-icon-wrap">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="mhs-cari" class="input" placeholder="Ketik untuk menyaring...">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid grid-2">
+          <div class="field">
+            <input type="text" id="mhs-nim" class="input input-mono" placeholder="NIM baru, cth: 2415051074">
+          </div>
+          <div class="field">
+            <input type="text" id="mhs-nama" class="input" placeholder="Nama mahasiswa">
+          </div>
+        </div>
+        <button class="btn btn-success btn-block" onclick="tambahMahasiswa()">
+          <i class="fa-solid fa-plus"></i> Tambah Mahasiswa
+        </button>
+
+        <details class="acc">
+          <summary><i class="fa-solid fa-layer-group"></i> Tambah Massal <span style="color:var(--muted-2);font-weight:600">(tempel daftar, satu baris per mahasiswa)</span> <i class="fa-solid fa-chevron-right chev" style="margin-left:auto"></i></summary>
+          <div class="acc-body">
+            <textarea id="mhs-bulk" class="textarea" rows="6" placeholder="2415051074 Gede Pasek Ary Sugiantara&#10;2415051001 I Kadek Agus Mertha Kusuma&#10;atau format: NIM|Nama"></textarea>
+            <button class="btn btn-outline btn-block" onclick="tambahMassal()"><i class="fa-solid fa-file-import"></i> Proses Tambah Massal</button>
+          </div>
+        </details>
+
+        <div class="form-grid grid-2">
+          <button class="btn btn-soft-green" onclick="kirimMaster()"><i class="fa-solid fa-cloud-arrow-up"></i> Kirim Master → Spreadsheet</button>
+          <button class="btn btn-soft-blue" onclick="tarikMaster()"><i class="fa-solid fa-cloud-arrow-down"></i> Ambil Master ← Spreadsheet</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width:44px">No</th>
+                <th>NIM</th>
+                <th>Nama</th>
+                <th style="width:120px;text-align:center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="table-master"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 3. AKUN ADMIN ================= -->
+    <section id="akun" class="card section-card anim-in-3">
+      <div class="section-title st-sky">
+        <div class="st-main">
+          <div class="st-icon"><i class="fa-solid fa-user-gear"></i></div>
+          <div>
+            <h3>Akun Admin</h3>
+            <p class="st-sub">Tambah admin, ganti password, atau hapus akun.</p>
+          </div>
+        </div>
+        <span class="count-pill" id="count-admin">0 akun</span>
+      </div>
+      <div class="card-body form-stack" style="gap:16px">
+
+        <div class="alert alert-amber">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <div><strong>Penting</strong><p>Password disimpan sebagai hash SHA-256 di spreadsheet. Gunakan password yang kuat dan jangan bagikan spreadsheet kepada mahasiswa.</p></div>
+        </div>
+
+        <div class="form-grid grid-2">
+          <div class="field">
+            <label class="field-label">Nama Admin</label>
+            <input type="text" id="adm-nama" class="input" placeholder="cth: Ketua Kelas">
+          </div>
+          <div class="field">
+            <label class="field-label">Username</label>
+            <input type="text" id="adm-username" class="input input-mono" placeholder="cth: ketua24" maxlength="30">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Password</label>
+          <input type="password" id="adm-password" class="input input-mono" placeholder="Minimal 6 karakter" autocomplete="new-password">
+        </div>
+        <button class="btn btn-primary btn-block" onclick="tambahAdmin()">
+          <i class="fa-solid fa-user-plus"></i> Tambah Akun Admin
+        </button>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Nama</th>
+                <th>Username</th>
+                <th style="width:150px;text-align:center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="table-admin"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 4. PENGATURAN ================= -->
+    <section id="pengaturan" class="card section-card anim-in-4">
+      <div class="section-title st-amber">
+        <div class="st-main">
+          <div class="st-icon"><i class="fa-solid fa-sliders"></i></div>
+          <div>
+            <h3>Pengaturan Sistem</h3>
+            <p class="st-sub">Nama aplikasi, koneksi spreadsheet &amp; perawatan data.</p>
+          </div>
+        </div>
+      </div>
+      <div class="card-body form-stack" style="gap:16px">
+
+        <div class="form-grid grid-2">
+          <div class="field">
+            <label class="field-label">Nama Aplikasi</label>
+            <input type="text" id="set-app-name" class="input" placeholder="cth: Absensi Mahasiswa">
+          </div>
+          <div class="field">
+            <label class="field-label">Status Koneksi</label>
+            <div id="sheet-status" class="alert alert-amber" style="padding:11px 14px">
+              <i class="fa-solid fa-plug-circle-xmark"></i>
+              <div><strong>Belum terhubung</strong><p id="sheet-status-text">Tempel URL Apps Script di bawah.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Google Apps Script Web App URL</label>
+          <input type="url" id="set-script-url" class="input input-mono" placeholder="https://script.google.com/macros/s/.../exec">
+          <span class="field-hint">Buat spreadsheet + Apps Script (lihat README.md), lalu tempel URL deployment /exec di sini.</span>
+        </div>
+
+        <button class="btn btn-dark btn-block" onclick="simpanPengaturan()">
+          <i class="fa-solid fa-floppy-disk"></i> Simpan Pengaturan &amp; Sinkronkan
+        </button>
+
+        <hr style="border:none;border-top:1px solid var(--border-soft)">
+
+        <div class="form-grid grid-2">
+          <button class="btn btn-soft-blue" onclick="sinkronSekarang()"><i class="fa-solid fa-rotate"></i> Sinkron Sekarang</button>
+          <button class="btn btn-soft-red" onclick="hapusSemuaLog()"><i class="fa-solid fa-broom"></i> Hapus Semua Log Absensi</button>
+        </div>
+        <div class="form-grid grid-2">
+          <button class="btn btn-outline" onclick="tesKoneksi()"><i class="fa-solid fa-microchip"></i> Tes Koneksi Backend</button>
+          <button class="btn btn-outline" onclick="resetLokal()"><i class="fa-solid fa-rotate-left"></i> Reset Cache Lokal</button>
+        </div>
+        <p class="field-hint" id="pengaturan-info">Cache lokal memungkinkan tampilan cepat tanpa internet; spreadsheet tetap sumber kebenaran.</p>
+      </div>
+    </section>
+
+    <footer class="footer">
+      Panel Admin &middot; master data &amp; sesi dikelola khusus admin &middot; sinkron otomatis tiap 45 detik
+    </footer>
+  </main>
+
+  <!-- ================= TOAST ================= -->
+  <div class="toast" id="toast" role="alert">
+    <div class="t-icon ok"><i class="fa-solid fa-circle-check"></i></div>
+    <div class="t-body">
+      <div class="t-title" id="toast-title">Notifikasi</div>
+      <div class="t-msg" id="toast-msg">Pesan.</div>
+    </div>
+    <button class="t-close" onclick="Absensi.hideToast()"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+
+  <script src="shared.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

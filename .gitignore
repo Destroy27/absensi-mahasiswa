@@ -1,0 +1,8 @@
+# Kode backend Apps Script ditempel manual ke Google Spreadsheet
+# (tidak perlu di-hosting — lihat README.md Langkah 1)
+apps-script/
+
+# File sistem / editor
+Thumbs.db
+.DS_Store
+*.log
