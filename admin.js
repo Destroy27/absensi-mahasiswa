@@ -489,6 +489,7 @@
   window.attemptLogin = attemptLogin;
   window.lockPanel = lockPanel;
   window.simpanKelas = simpanKelas;
+  window.hapusKelas = hapusKelas;
   window.tambahMahasiswa = tambahMahasiswa;
   window.tambahMassal = tambahMassal;
   window.kirimMaster = kirimMaster;
