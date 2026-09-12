@@ -172,15 +172,41 @@
   }
 
   /* ================= HTTP: POST (tulis ke spreadsheet) ================= */
-  function postToSheet(payload) {
+  /* Retry otomatis khusus operasi idempoten (save_config/save_master/delete_log):
+     kalau koneksi putus atau server nggantung, coba ulang dgn jeda makin lama.
+     Untuk 'absen' (append baris) retry MATI: kalau gagal, user mengulang manual —
+     mencegah data absen ganda saat submit pertama sebenarnya tersimpan. */
+  function postToSheet(payload, retries) {
     if (!isSheetConfigured()) return Promise.resolve({ ok: false, msg: 'URL belum diatur' });
-    return fetch(scriptURL.trim(), {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-      body: JSON.stringify(payload)
-    }).then(function () { return { ok: true }; })
-      .catch(function (err) { console.error('Gagal POST:', err); return { ok: false, msg: 'Koneksi gagal' }; });
+    retries = (retries == null) ? 2 : Math.max(0, retries);
+    var attempt = 0;
+    var TIMEOUT_MS = 18000;
+
+    function tryOnce() {
+      attempt++;
+      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, TIMEOUT_MS) : null;
+      return fetch(scriptURL.trim(), {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body: JSON.stringify(payload),
+        signal: ctrl ? ctrl.signal : undefined
+      }).then(function () {
+        if (timer) clearTimeout(timer);
+        return { ok: true };
+      }).catch(function (err) {
+        if (timer) clearTimeout(timer);
+        if (attempt <= retries) {
+          var wait = 600 * Math.pow(2, attempt - 1);
+          console.warn('POST gagal (percobaan ' + attempt + '), coba lagi dalam ' + wait + 'ms:', err && err.name || err);
+          return new Promise(function (resolve) { setTimeout(function () { resolve(tryOnce()); }, wait); });
+        }
+        console.error('Gagal POST:', err);
+        return { ok: false, msg: 'Koneksi gagal — periksa jaringan & coba lagi.' };
+      });
+    }
+    return tryOnce();
   }
 
   /* ================= SYNC (tarik semua dari spreadsheet) ================= */
@@ -218,7 +244,7 @@
   /* ================= ABSEN ================= */
   /* payload: { action:'absen', kelasId, pertemuan, nim, nama, status, alasan, tsISO, tsDisplay, docName, docData } */
   function doAbsen(payload) {
-    return postToSheet(payload);
+    return postToSheet(payload, 0); /* tanpa retry otomatis — cegah absen ganda */
   }
 
   /* ================= KONFIGURASI (admin) ================= */
