@@ -23,9 +23,21 @@
 
     var admins = (A.config.admins || []);
     if (!admins.length) {
-      // Seed akun default admin / admin123
-      await seedDefaultAdmin();
+      /* JANGAN langsung seed+simpan: pada perangkat baru, config lokal kosong
+         padahal spreadsheet bisa saja berisi data. Sinkron dulu — kalau backend
+         benar-benar kosong (setup pertama kali), baru seed & simpan. */
+      A.showToast('Menyiapkan', 'Menarik data akun dari spreadsheet...', 'warn');
+      var syncRes = await new Promise(function (resolve) { A.syncAll(function (r) { resolve(r); }); });
       admins = A.config.admins || [];
+      if (!admins.length) {
+        if (!syncRes || !syncRes.ok) {
+          A.showToast('Login Gagal', 'Tidak dapat terhubung ke spreadsheet. Periksa koneksi.', 'err');
+          return;
+        }
+        // Backend benar-benar kosong → aman untuk seed & simpan
+        await seedDefaultAdmin();
+        admins = A.config.admins || [];
+      }
     }
     var acc = null;
     for (var i = 0; i < admins.length; i++) {

@@ -42,6 +42,7 @@
   })();
   var onExternalChange = null;
   var _syncBusy = false;
+  var _configLoaded = false; // true setelah konfigurasi asli dari backend (atau cache) termuat
 
   /* ================= CACHE ================= */
   function loadCache() {
@@ -53,6 +54,7 @@
         state.config = Object.assign({ appName: 'Sistem Absensi Mahasiswa', admins: [], classes: [] }, c.config);
         state.master = c.master || [];
         state.logs = c.logs || [];
+        _configLoaded = true;
       }
     } catch (e) { /* abaikan */ }
   }
@@ -190,6 +192,7 @@
     fetchJSONP('get_config', null, function (cfg) {
       if (cfg && cfg.ok && cfg.config) {
         state.config = cfg.config;
+        _configLoaded = true;
       }
       fetchJSONP('get_master', null, function (m) {
         if (m && m.ok && m.students) state.master = m.students;
@@ -221,6 +224,13 @@
 
   /* ================= KONFIGURASI (admin) ================= */
   function saveConfig(config, cb) {
+    /* PENGAMAN: jangan pernah menulis ke spreadsheet sebelum konfigurasi asli
+       termuat. Tanpa ini, perangkat baru (localStorage kosong) bisa menimpa
+       semua kelas/akun dengan data kosong. */
+    if (!_configLoaded) {
+      if (cb) cb({ ok: false, msg: 'Tunggu sinkron pertama selesai, lalu coba lagi.' });
+      return Promise.resolve({ ok: false, msg: 'Belum sinkron' });
+    }
     state.config = config;
     saveCache();
     return postToSheet({ action: 'save_config', appName: config.appName, admins: config.admins, classes: config.classes })
