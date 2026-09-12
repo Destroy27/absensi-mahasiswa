@@ -184,30 +184,29 @@
   }
 
   /* ================= SYNC (tarik semua dari spreadsheet) ================= */
+  /* Tiga fetch dijalankan PARALEL (bukan berurutan) agar tiap aksi selesai ~3x lebih cepat. */
   function syncAll(onDone) {
     if (!isSheetConfigured()) { if (onDone) onDone({ ok: false, msg: 'URL belum diatur' }); return; }
     if (_syncBusy) return;
     _syncBusy = true;
 
-    fetchJSONP('get_config', null, function (cfg) {
-      if (cfg && cfg.ok && cfg.config) {
-        state.config = cfg.config;
-        _configLoaded = true;
-      }
-      fetchJSONP('get_master', null, function (m) {
-        if (m && m.ok && m.students) state.master = m.students;
-        fetchJSONP('get_logs', null, function (l) {
-          _syncBusy = false;
-          if (l && l.ok && l.logs) state.logs = l.logs;
-          saveCache();
-          if (onDone) {
-            onDone({
-              ok: cfg && cfg.ok && m && m.ok && l && l.ok,
-              msg: (!cfg || !cfg.ok) ? (cfg && cfg.msg || 'Gagal ambil konfigurasi') : (!m || !m.ok) ? (m && m.msg || 'Gagal ambil master') : (l && l.msg || 'Gagal ambil log')
-            });
-          }
+    function wrap(action) {
+      return new Promise(function (resolve) { fetchJSONP(action, null, resolve); });
+    }
+
+    Promise.all([wrap('get_config'), wrap('get_master'), wrap('get_logs')]).then(function (rs) {
+      var cfg = rs[0], m = rs[1], l = rs[2];
+      _syncBusy = false;
+      if (cfg && cfg.ok && cfg.config) { state.config = cfg.config; _configLoaded = true; }
+      if (m && m.ok && m.students) state.master = m.students;
+      if (l && l.ok && l.logs) state.logs = l.logs;
+      saveCache();
+      if (onDone) {
+        onDone({
+          ok: cfg && cfg.ok && m && m.ok && l && l.ok,
+          msg: (!cfg || !cfg.ok) ? (cfg && cfg.msg || 'Gagal ambil konfigurasi') : (!m || !m.ok) ? (m && m.msg || 'Gagal ambil master') : (l && l.msg || 'Gagal ambil log')
         });
-      });
+      }
     });
   }
 
@@ -235,10 +234,10 @@
     saveCache();
     return postToSheet({ action: 'save_config', appName: config.appName, admins: config.admins, classes: config.classes })
       .then(function (r) {
-        /* Beri jeda agar POST selesai diproses backend sebelum menarik ulang data */
+        /* Beri jeda singkat agar POST selesai diproses backend, lalu sinkron ulang (paralel) */
         setTimeout(function () {
           syncAll(function () { if (cb) cb(r); });
-        }, 700);
+        }, 400);
         return r;
       });
   }
@@ -252,7 +251,7 @@
       .then(function (r) {
         setTimeout(function () {
           syncAll(function () { if (cb) cb(r); });
-        }, 700);
+        }, 400);
         return r;
       });
   }
