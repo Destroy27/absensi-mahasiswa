@@ -546,8 +546,13 @@ details.acc .acc-body { padding: 0 15px 15px; display: flex; flex-direction: col
   .card-body { padding: 15px 16px 18px; }
   .card-head, .section-title { padding: 16px 16px 0; }
   .log-list { padding: 14px 16px 18px; }
-  .hero-stats { gap: 7px; }
-  .hero-stat .value { font-size: 15px; }
+  /* Hero stats di HP: Jam Buka & Jam Tutup berdampingan (kompak),
+     Sisa Waktu jadi baris penuh di bawah agar mudah terlihat */
+  .hero-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .hero-stat { padding: 10px 8px; }
+  .hero-stat:nth-child(3) { grid-column: 1 / -1; }
+  .hero-stat .label { font-size: 9px; letter-spacing: 0.08em; }
+  .hero-stat .value { font-size: 16px; }
 }
 
 @media (min-width: 640px) and (max-width: 1023px) {
