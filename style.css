@@ -57,6 +57,7 @@ body {
   text-rendering: optimizeLegibility;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  overflow-x: clip; /* jaring pengaman: tidak ada elemen yang bisa meluber ke kanan/kiri */
 }
 
 img, svg { display: block; max-width: 100%; }
@@ -293,7 +294,7 @@ a { color: inherit; text-decoration: none; }
 .hero-sub { font-size: 13px; color: rgba(255,255,255,0.82); margin-top: 5px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .hero-sub strong { color: #fff; font-weight: 700; }
 
-.hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
+.hero-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 20px; }
 .hero-stat {
   background: rgba(255,255,255,0.13); border: 1px solid rgba(255,255,255,0.18);
   backdrop-filter: blur(8px); border-radius: 16px; padding: 11px 13px; text-align: center;
@@ -547,9 +548,11 @@ details.acc .acc-body { padding: 0 15px 15px; display: flex; flex-direction: col
   .card-head, .section-title { padding: 16px 16px 0; }
   .log-list { padding: 14px 16px 18px; }
   /* Hero stats di HP: Jam Buka & Jam Tutup berdampingan (kompak),
-     Sisa Waktu jadi baris penuh di bawah agar mudah terlihat */
-  .hero-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .hero-stat { padding: 10px 8px; }
+     Sisa Waktu jadi baris penuh di bawah agar mudah terlihat.
+     minmax(0,1fr) + min-width:0 mencegah kartu meluber melewati garis
+     saat teks besar (font scaling Android) */
+  .hero-stats { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+  .hero-stat { min-width: 0; padding: 10px 8px; }
   .hero-stat:nth-child(3) { grid-column: 1 / -1; }
   .hero-stat .label { font-size: 9px; letter-spacing: 0.08em; }
   .hero-stat .value { font-size: 16px; }
