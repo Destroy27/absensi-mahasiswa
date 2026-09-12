@@ -32,8 +32,13 @@
     master: [],   // { kelasId, nim, nama }
     logs: []      // { id, kelasId, pertemuan, nim, nama, status, alasan, ts, iso, docUrl, docName }
   };
+  /* URL Apps Script default: dipakai otomatis di semua perangkat/browser baru
+     (saat localStorage kosong). Karena URL disimpan per-browser, tanpa ini
+     setiap device baru harus memasukkan URL manual. Bisa diubah via
+     Panel Admin > Pengaturan (nilainya disimpan di localStorage & menang). */
+  var DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby0cxlnhcJX-0ahN_NRZAazh7bO2kaQ8qofrrcmmlGJqwEG7tMlGTWTvvQvwzGYS55D/exec';
   var scriptURL = (function () {
-    try { return localStorage.getItem(KEYS.script) || ''; } catch (e) { return ''; }
+    try { return localStorage.getItem(KEYS.script) || DEFAULT_SCRIPT_URL; } catch (e) { return DEFAULT_SCRIPT_URL; }
   })();
   var onExternalChange = null;
   var _syncBusy = false;
