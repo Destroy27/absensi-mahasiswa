@@ -350,6 +350,19 @@
     A.saveMasterForClass(kid, students, function () { renderMaster(); renderDashboard(); A.showToast('Dihapus', s.nama + ' dikeluarkan dari kelas.', 'ok'); });
   };
 
+  window.hapusSemuaMahasiswa = function () {
+    var kid = getMhsKelasId();
+    var k = A.getKelas(kid);
+    if (!k) { A.showToast('Pilih Kelas', 'Tidak ada kelas yang dipilih.', 'warn'); return; }
+    var n = A.getStudents(kid).length;
+    if (!n) { A.showToast('Kosong', 'Tidak ada mahasiswa di kelas "' + k.nama + '".', 'warn'); return; }
+    if (!confirm('Hapus SEMUA ' + n + ' mahasiswa dari kelas "' + k.nama + '"?')) return;
+    A.saveMasterForClass(kid, [], function () {
+      renderMaster(); renderDashboard();
+      A.showToast('Selesai', 'Semua mahasiswa dikeluarkan dari kelas "' + k.nama + '".', 'ok');
+    });
+  };
+
   function kirimMaster() {
     var kid = getMhsKelasId();
     if (!kid) { A.showToast('Pilih Kelas', 'Pilih kelas dulu.', 'warn'); return; }
