@@ -187,6 +187,12 @@
     $('dok-hint').textContent = wajib
       ? 'Kelas mewajibkan bukti untuk semua status.'
       : 'Bukti opsional untuk semua status — lampirkan bila ada.';
+
+    /* Kalau kelas TIDAK mewajibkan bukti: area upload foto disembunyikan
+       sepenuhnya supaya mahasiswa tidak bingung/merasa harus isi. */
+    var box = $('box-dok');
+    box.classList.toggle('hidden', !wajib);
+    if (!wajib && fileData) hapusFile();
   }
 
   /* ================= FILE ================= */
