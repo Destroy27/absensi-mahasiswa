@@ -21,7 +21,7 @@
       renderKelasSelector();
       renderAll();
       if (r && !r.ok && A.isSheetConfigured()) A.showToast('Sinkron', r.msg, 'warn');
-    }, 45000);
+    }, 60000);
     A.setOnExternalChange(function () { renderKelasSelector(); renderAll(); });
     A.setOnPendingConfirm(function () { renderAll(); }); /* absen pending terkonfirmasi → segarkan tampilan */
     $('input-nim').addEventListener('input', cekNIM);

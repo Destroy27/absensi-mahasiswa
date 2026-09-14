@@ -13,7 +13,7 @@
       renderKelasSelect();
       renderAll();
       if (r && !r.ok && A.isSheetConfigured()) A.showToast('Sinkron', r.msg, 'warn');
-    }, 45000);
+    }, 60000);
     A.setOnExternalChange(function () { renderKelasSelect(); renderAll(); });
 
     $('filter-kelas').addEventListener('change', function () {

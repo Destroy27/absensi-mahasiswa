@@ -222,18 +222,15 @@
   }
 
   /* ================= SYNC (tarik semua dari spreadsheet) ================= */
-  /* Tiga fetch dijalankan PARALEL (bukan berurutan) agar tiap aksi selesai ~3x lebih cepat. */
+  /* Efisiensi: backend v3.1 punya aksi `get_all` — cukup SATU request
+     untuk config + master + logs (daripada tiga). Kalau backend masih
+     versi lama, otomatis jatuh ke 3 request paralel (fallback). */
   function syncAll(onDone) {
     if (!isSheetConfigured()) { if (onDone) onDone({ ok: false, msg: 'URL belum diatur' }); return; }
     if (_syncBusy) return;
     _syncBusy = true;
 
-    function wrap(action) {
-      return new Promise(function (resolve) { fetchJSONP(action, null, resolve); });
-    }
-
-    Promise.all([wrap('get_config'), wrap('get_master'), wrap('get_logs')]).then(function (rs) {
-      var cfg = rs[0], m = rs[1], l = rs[2];
+    function finish(cfg, m, l) {
       _syncBusy = false;
       if (cfg && cfg.ok && cfg.config) { state.config = cfg.config; _configLoaded = true; }
       if (m && m.ok && m.students) state.master = m.students;
@@ -246,12 +243,31 @@
           msg: (!cfg || !cfg.ok) ? (cfg && cfg.msg || 'Gagal ambil konfigurasi') : (!m || !m.ok) ? (m && m.msg || 'Gagal ambil master') : (l && l.msg || 'Gagal ambil log')
         });
       }
+    }
+
+    fetchJSONP('get_all', null, function (r) {
+      if (r && r.ok && r.config && r.students && r.logs) {
+        finish(r, r, r); /* get_all → { config, students, logs } sekaligus */
+        return;
+      }
+      /* Backend lama / aksi belum ada → fallback 3 request paralel */
+      function wrap(action) {
+        return new Promise(function (resolve) { fetchJSONP(action, null, resolve); });
+      }
+      Promise.all([wrap('get_config'), wrap('get_master'), wrap('get_logs')]).then(function (rs) {
+        finish(rs[0], rs[1], rs[2]);
+      });
     });
   }
 
   function startAutoSync(onDone, ms) {
+    ms = ms || 60000;
     syncAll(onDone);
-    setInterval(function () { syncAll(onDone); }, ms || 45000);
+    setInterval(function () {
+      /* Halaman tidak terlihat → jangan membebani server/baterai */
+      if (typeof document !== 'undefined' && document.hidden) return;
+      syncAll(onDone);
+    }, ms);
   }
 
   /* ================= ABSEN — GUARANTEED DELIVERY ================= */
@@ -270,17 +286,24 @@
              String(p.nim) === String(log.nim);
     });
   }
-  /* Cek ke backend: apakah catatan ini sudah tersimpan? true/false/null(ragu) */
-  function serverHasLog(payload, timeoutMs) {
+  /* Ambil array logs dari backend sekali (array, atau null bila gagal/lambat) */
+  function fetchLogsArray(timeoutMs) {
     return new Promise(function (resolve) {
       fetchJSONP('get_logs', null, function (r) {
         if (!r || !r.ok || !r.logs) { resolve(null); return; }
-        resolve(r.logs.some(function (l) {
-          return String(l.kelasId) === String(payload.kelasId) &&
-                 parseInt(l.pertemuan, 10) === parseInt(payload.pertemuan, 10) &&
-                 String(l.nim) === String(payload.nim);
-        }));
+        resolve(r.logs);
       }, timeoutMs || 20000);
+    });
+  }
+  /* Cek ke backend: apakah catatan ini sudah tersimpan? true/false/null(ragu) */
+  function serverHasLog(payload, timeoutMs) {
+    return fetchLogsArray(timeoutMs).then(function (logs) {
+      if (logs === null) return null;
+      return logs.some(function (l) {
+        return String(l.kelasId) === String(payload.kelasId) &&
+               parseInt(l.pertemuan, 10) === parseInt(payload.pertemuan, 10) &&
+               String(l.nim) === String(payload.nim);
+      });
     });
   }
   function confirmPending(p) {
@@ -309,20 +332,28 @@
     if (!_pending.length) return;
     _pendTimer = setTimeout(function () { drainPendingOnce(); }, 20000);
   }
-  /* Satu siklus kirim ulang: verifikasi dulu — baru kirim ulang yang PASTI belum masuk.
-     Yang server-nya masih lambat (null) ditunda ke siklus berikutnya. */
+  /* Satu siklus kirim ulang: SATU fetch get_logs untuk semua antrean,
+     lalu kirim ulang hanya yang PASTI belum masuk (cegah dobel & boros). */
   function drainPendingOnce() {
     if (_pendBusy || !_pending.length || !isSheetConfigured()) return Promise.resolve();
     _pendBusy = true;
     var items = _pending.slice();
-    return items.reduce(function (chain, p) {
-      return chain.then(function () {
-        return serverHasLog(p, 12000).then(function (saved) {
-          if (saved === true) { confirmPending(p); return; }
-          if (saved === false) { return postToSheet(p, 0).then(function () { return null; }); }
+    return fetchLogsArray(12000).then(function (logsArr) {
+      var confirmed = [], resend = [];
+      items.forEach(function (p) {
+        if (logsArr === null) return; /* server lambat → coba siklus berikutnya */
+        var ada = logsArr.some(function (l) {
+          return String(l.kelasId) === String(p.kelasId) &&
+                 parseInt(l.pertemuan, 10) === parseInt(p.pertemuan, 10) &&
+                 String(l.nim) === String(p.nim);
         });
+        if (ada) confirmed.push(p); else resend.push(p);
       });
-    }, Promise.resolve()).then(function () {
+      confirmed.forEach(function (p) { confirmPending(p); });
+      return resend.reduce(function (chain, p) {
+        return chain.then(function () { return postToSheet(p, 0).then(function () { return null; }); });
+      }, Promise.resolve());
+    }).then(function () {
       _pendBusy = false;
       schedulePendDrain();
     }, function () {

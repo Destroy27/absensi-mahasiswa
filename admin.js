@@ -85,7 +85,7 @@
     A.startAutoSync(function (r) {
       renderAllAdmin();
       if (r && !r.ok && isUnlocked()) A.showToast('Sinkron', r.msg, 'warn');
-    }, 45000);
+    }, 60000);
     A.setOnExternalChange(function () { renderAllAdmin(); });
 
     fillFormKelas(); // kosong/buat baru
