@@ -44,6 +44,18 @@
   var _syncBusy = false;
   var _configLoaded = false; // true setelah konfigurasi asli dari backend (atau cache) termuat
 
+  /* --- Antrean absen "pending" (jaminan terkirim saat server rame) ---
+     Absen yang gagal atau belum dikonfirmasi server TIDAK dibuang: disimpan
+     di perangkat lalu dikirim ulang otomatis di latar belakang sampai backend
+     mengonfirmasi. Inilah yang memungkinkan 40+ mahasiswa absen bersamaan
+     tanpa ada catatan yang hilang. */
+  var PENDING_KEY = 'absv2_pending_absen';
+  var _pending = [];
+  var _pendBusy = false;
+  var _pendTimer = null;
+  var _onPendingConfirm = null;
+  (function () { try { _pending = JSON.parse(localStorage.getItem(PENDING_KEY)) || []; } catch (e) { _pending = []; } })();
+
   /* ================= CACHE ================= */
   function loadCache() {
     try {
@@ -227,6 +239,7 @@
       if (m && m.ok && m.students) state.master = m.students;
       if (l && l.ok && l.logs) state.logs = l.logs;
       saveCache();
+      schedulePendDrain(); /* begitu ada koneksi sehat, antrean ikut dikirim ulang */
       if (onDone) {
         onDone({
           ok: cfg && cfg.ok && m && m.ok && l && l.ok,
@@ -241,10 +254,110 @@
     setInterval(function () { syncAll(onDone); }, ms || 45000);
   }
 
-  /* ================= ABSEN ================= */
+  /* ================= ABSEN — GUARANTEED DELIVERY ================= */
+  /* Alur: kirim POST → tunggu sebentar → VERIFIKASI ke backend (get_logs).
+     - Terverifikasi          → resolve { confirmed:true }
+     - Gagal / belum tampil   → simpan ke antrean pending (localStorage),
+                                kirim ulang otomatis sampai sukses.
+     Kirim ulang hanya dilakukan SETELAH dipastikan belum masuk server
+     (cegah absen ganda). */
+  function pendKey(p) { return String(p.kelasId) + '_' + parseInt(p.pertemuan, 10) + '_' + String(p.nim); }
+  function savePending() { try { localStorage.setItem(PENDING_KEY, JSON.stringify(_pending)); } catch (e) {} }
+  function isPendingLog(log) {
+    return _pending.some(function (p) {
+      return String(p.kelasId) === String(log.kelasId) &&
+             parseInt(p.pertemuan, 10) === parseInt(log.pertemuan, 10) &&
+             String(p.nim) === String(log.nim);
+    });
+  }
+  /* Cek ke backend: apakah catatan ini sudah tersimpan? true/false/null(ragu) */
+  function serverHasLog(payload, timeoutMs) {
+    return new Promise(function (resolve) {
+      fetchJSONP('get_logs', null, function (r) {
+        if (!r || !r.ok || !r.logs) { resolve(null); return; }
+        resolve(r.logs.some(function (l) {
+          return String(l.kelasId) === String(payload.kelasId) &&
+                 parseInt(l.pertemuan, 10) === parseInt(payload.pertemuan, 10) &&
+                 String(l.nim) === String(payload.nim);
+        }));
+      }, timeoutMs || 20000);
+    });
+  }
+  function confirmPending(p) {
+    var key = pendKey(p);
+    _pending = _pending.filter(function (x) { return pendKey(x) !== key; });
+    savePending();
+    var ada = state.logs.some(function (l) {
+      return String(l.kelasId) === String(p.kelasId) &&
+             parseInt(l.pertemuan, 10) === parseInt(p.pertemuan, 10) &&
+             String(l.nim) === String(p.nim);
+    });
+    if (!ada) {
+      state.logs.unshift({
+        id: p.kelasId + '_' + p.pertemuan + '_' + p.nim,
+        kelasId: p.kelasId, pertemuan: p.pertemuan,
+        nim: p.nim, nama: p.nama, status: p.status, alasan: p.alasan || '',
+        ts: p.tsDisplay || '', iso: p.tsISO || '', docName: p.docName || '', docUrl: ''
+      });
+    }
+    saveCache();
+    if (typeof onExternalChange === 'function') onExternalChange();
+    if (typeof _onPendingConfirm === 'function') _onPendingConfirm(p);
+  }
+  function schedulePendDrain() {
+    clearTimeout(_pendTimer);
+    if (!_pending.length) return;
+    _pendTimer = setTimeout(function () { drainPendingOnce(); }, 20000);
+  }
+  /* Satu siklus kirim ulang: verifikasi dulu — baru kirim ulang yang PASTI belum masuk.
+     Yang server-nya masih lambat (null) ditunda ke siklus berikutnya. */
+  function drainPendingOnce() {
+    if (_pendBusy || !_pending.length || !isSheetConfigured()) return Promise.resolve();
+    _pendBusy = true;
+    var items = _pending.slice();
+    return items.reduce(function (chain, p) {
+      return chain.then(function () {
+        return serverHasLog(p, 12000).then(function (saved) {
+          if (saved === true) { confirmPending(p); return; }
+          if (saved === false) { return postToSheet(p, 0).then(function () { return null; }); }
+        });
+      });
+    }, Promise.resolve()).then(function () {
+      _pendBusy = false;
+      schedulePendDrain();
+    }, function () {
+      _pendBusy = false;
+      schedulePendDrain();
+    });
+  }
   /* payload: { action:'absen', kelasId, pertemuan, nim, nama, status, alasan, tsISO, tsDisplay, docName, docData } */
   function doAbsen(payload) {
-    return postToSheet(payload, 0); /* tanpa retry otomatis — cegah absen ganda */
+    var key = pendKey(payload);
+    if (_pending.some(function (x) { return pendKey(x) === key; })) {
+      schedulePendDrain();
+      return Promise.resolve({ ok: true, queued: true });
+    }
+    return postToSheet(payload, 0).then(function () {
+      /* beri waktu backend memproses sebelum verifikasi pertama */
+      return new Promise(function (res) { setTimeout(res, 7000); });
+    }).then(function () {
+      return serverHasLog(payload, 20000);
+    }).then(function (saved) {
+      if (saved === true) return { ok: true, confirmed: true };
+      if (!_pending.some(function (x) { return pendKey(x) === key; })) {
+        _pending.push(payload);
+        savePending();
+      }
+      schedulePendDrain();
+      return { ok: true, confirmed: false, queued: true };
+    }).catch(function () {
+      if (!_pending.some(function (x) { return pendKey(x) === key; })) {
+        _pending.push(payload);
+        savePending();
+      }
+      schedulePendDrain();
+      return { ok: true, confirmed: false, queued: true };
+    });
   }
 
   /* ================= KONFIGURASI (admin) ================= */
@@ -424,6 +537,10 @@
     syncAll: syncAll,
     startAutoSync: startAutoSync,
     doAbsen: doAbsen,
+    drainPending: drainPendingOnce,
+    pendingCount: function () { return _pending.length; },
+    isPendingLog: isPendingLog,
+    setOnPendingConfirm: function (fn) { _onPendingConfirm = fn; },
     saveConfig: saveConfig,
     saveMasterForClass: saveMasterForClass,
     deleteLogEntry: deleteLogEntry,
@@ -445,6 +562,9 @@
       if (typeof onExternalChange === 'function') onExternalChange();
     }
   });
+
+  /* Koneksi kembali → langsung tuntaskan antrean absen pending */
+  window.addEventListener('online', function () { schedulePendDrain(); });
 
   window.Absensi = api;
   loadCache();

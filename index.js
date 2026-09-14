@@ -23,6 +23,7 @@
       if (r && !r.ok && A.isSheetConfigured()) A.showToast('Sinkron', r.msg, 'warn');
     }, 45000);
     A.setOnExternalChange(function () { renderKelasSelector(); renderAll(); });
+    A.setOnPendingConfirm(function () { renderAll(); }); /* absen pending terkonfirmasi → segarkan tampilan */
     $('input-nim').addEventListener('input', cekNIM);
     $('input-file').addEventListener('change', function (e) { handleFile(e.target.files && e.target.files[0]); });
   });
@@ -273,26 +274,36 @@
       docData: fileData && fileData.dataUrl.length < 1200000 ? fileData.dataUrl : ''
     };
 
-    A.doAbsen(payload).then(function () {
-      var log = {
-        id: A.uid(),
-        kelasId: k.id,
-        pertemuan: k.pertemuan,
-        nim: nim,
-        nama: verifiedStudent.nama,
-        status: selectedStatus,
-        alasan: alasan,
-        ts: A.fmtTime(now.toISOString()),
-        iso: now.toISOString(),
-        docName: fileData ? fileData.nama : '',
-        docUrl: ''
-      };
-      A.state.logs.unshift(log);
-      A.saveCache();
-      resetForm();
+    /* Catat lokal SEKARANG (optimis) — mahasiswa langsung melihat absennya.
+       Konfirmasi server berjalan di latar belakang; bila sempat gagal saat
+       ramai, sistem menyimpan ke antrean & mengirim ulang sampai masuk. */
+    var log = {
+      id: A.uid(),
+      kelasId: k.id,
+      pertemuan: k.pertemuan,
+      nim: nim,
+      nama: verifiedStudent.nama,
+      status: selectedStatus,
+      alasan: alasan,
+      ts: A.fmtTime(now.toISOString()),
+      iso: now.toISOString(),
+      docName: fileData ? fileData.nama : '',
+      docUrl: ''
+    };
+    A.state.logs.unshift(log);
+    A.saveCache();
+    resetForm();
+    renderLogs();
+    A.showToast('Absen Dikirim', verifiedStudent.nama + ' — menunggu konfirmasi server...', 'warn');
+
+    A.doAbsen(payload).then(function (res) {
+      if (res && res.confirmed) {
+        A.showToast('Absensi Tercatat!', verifiedStudent.nama + ' — ' + selectedStatus + ' pada Pertemuan Ke-' + k.pertemuan + '.',
+          selectedStatus === 'Hadir' ? 'ok' : 'warn');
+      } else {
+        A.showToast('Menunggu Konfirmasi', 'Tersimpan di perangkat & otomatis dikirim ulang sampai tercatat di server.', 'warn');
+      }
       renderLogs();
-      A.showToast('Absensi Tercatat!', verifiedStudent.nama + ' — ' + selectedStatus + ' pada Pertemuan Ke-' + k.pertemuan + '.',
-        selectedStatus === 'Hadir' ? 'ok' : 'warn');
     }).finally(function () {
       submitting = false;
       btn.disabled = false;
@@ -339,7 +350,8 @@
                 '<div class="li-name">' + A.esc(l.nama) + '</div>' +
                 '<div class="li-meta">' + A.esc(l.nim) + ' · ' + A.esc(l.ts || '') + '</div>' +
               '</div>' +
-              '<span class="' + m.badge + '"><i class="' + m.icon + '"></i> ' + A.esc(l.status) + '</span>' +
+              (A.isPendingLog(l) ? '<span class="badge badge-sakit"><i class="fa-solid fa-hourglass-half"></i> Sinkron</span> ' : '') +
+            '<span class="' + m.badge + '"><i class="' + m.icon + '"></i> ' + A.esc(l.status) + '</span>' +
             '</div>' +
             (l.alasan ? '<div class="li-alasan"><i class="fa-solid fa-quote-left"></i><span>' + A.esc(l.alasan) + '</span></div>' : '') +
             (l.docName ? '<div class="li-doc" onclick="lihatBukti(\'' + l.id + '\')"><i class="fa-solid fa-paperclip"></i> ' + A.esc(l.docName) + '</div>' : '') +
