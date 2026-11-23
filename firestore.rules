@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Aplikasi absensi pribadi tanpa login.
+    // Baca/tulis dibuka hanya untuk koleksi aplikasi ini.
+    match /members/{docId} {
+      allow read, write: if true;
+    }
+    match /sessions/{docId} {
+      allow read, write: if true;
+    }
+    match /attendance/{docId} {
+      allow read, write: if true;
+    }
+    match /settings/{docId} {
+      allow read, write: if true;
+    }
+
+    // Koleksi lain ditolak.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
